@@ -1,0 +1,1 @@
+/usr/bin/c++.exe    -Wl,--enable-auto-import CMakeFiles/task1.2.dir/task1.2.c.o  -o task1.2.exe -Wl,--out-implib,libtask1.2.dll.a -Wl,--major-image-version,0,--minor-image-version,0  ../src/libclient.a 
