@@ -1,1 +1,0 @@
-/usr/bin/c++.exe    -Wl,--enable-auto-import CMakeFiles/test.dir/ScratchPad.c.o  -o test.exe -Wl,--out-implib,libtest.dll.a -Wl,--major-image-version,0,--minor-image-version,0  ../src/libclient.a 
