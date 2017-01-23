@@ -1,13 +1,15 @@
 #include "abdrive.h"
 #include <stdio.h>
 #include "simpletools.h"
+#define DEBUG 0
 
 void safeZeroTurn(float desired_angle) {
   float current_angle = 0;
   static float delta_angle = 0;
+	if(DEBUG) printf("\t\t%f input call - initial condition %f\n", desired_angle, delta_angle);
   delta_angle += desired_angle;
-  while(current_angle < desired_angle) {
-	 printf("loop\n");
+  while(abs(current_angle) < abs(desired_angle)) {
+	 if(DEBUG) printf("loop - current_angle %f, %f\n", current_angle, delta_angle);
     int start_distance[2];
     int end_distance[2]; 
     drive_getTicks(start_distance, start_distance+1);
@@ -15,15 +17,14 @@ void safeZeroTurn(float desired_angle) {
     float result = (((delta_angle/360)*PI*2)*(105.8/2))/3.25;
     
 	drive_goto((int)result, (-1) * (int)result);
-	printf("loop1.2\n");
     drive_getTicks(end_distance, end_distance+1);
-    printf("loop2\n");
 	float avg_dif = (abs(end_distance[0]-start_distance[0])+abs(end_distance[1]-start_distance[1]))/2;
     float angle_dif = avg_dif * (3.25*360)/(52.9*2*PI);
+	if((end_distance[0]-start_distance[0]) < 0) angle_dif *= -1;
 	current_angle += angle_dif;
 	delta_angle = desired_angle - current_angle;
-	printf("%f\n", delta_angle);
-    if(delta_angle < 3) break; 
+	if(DEBUG) printf("%f moved\n", delta_angle);
+    if(abs(delta_angle) < 3) break; 
   }
   return;
 }
@@ -33,14 +34,13 @@ return mm/3.25;
 }
 
 void safeDrawLine(float desired_dist) {
-
-	print("Drawing line\n");
-
    float current_dist = 0;
 
-   float delta_dist = desired_dist;
-
-
+   static float delta_dist = 0; 
+   delta_dist += desired_dist;
+	
+	while(abs(current_dist) < abs(desired_dist)) {
+	if(DEBUG) printf("%f Dist left\n", delta_dist);
     int start_distance[2];
 
     int end_distance[2]; 
@@ -54,14 +54,13 @@ void safeDrawLine(float desired_dist) {
     drive_getTicks(end_distance, end_distance+1);
 
     float avg_dif = (abs(end_distance[0]-start_distance[0])+abs(end_distance[1]-start_distance[1]))/2;
-
+	if((end_distance[0]-start_distance[0]) < 0) avg_dif *= -1;
     current_dist += avg_dif*3.25;
 
-    delta_dist = desired_dist - current_dist;
-
-	print("%f ticks left to move\n", delta_dist);
-
-
+	delta_dist = desired_dist - current_dist;
+		if(abs(delta_dist) < 4) break;
+	}
+	if(DEBUG) printf("Line Drawn\n");
 }
 
 
@@ -977,17 +976,17 @@ void drawString(char *string) {
 
 
 int main() {
-	print("Drawing\n");
+	//print("Drawing\n");
 	drawA();
-	print("A\n");
+	//print("A\n");
 	drawL();
-	print("L\n");
+	//print("L\n");
 	drawI();
-	print("I\n");
+	//print("I\n");
 	drawK();
-	print("K\n");
+	//print("K\n");
 	drawE();
-	print("E\n");
+	//print("E\n");
 	print("E\n");
 	return 0;
 
@@ -996,4 +995,3 @@ int main() {
 	
 
 }
-
