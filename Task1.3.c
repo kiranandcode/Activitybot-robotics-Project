@@ -6,24 +6,35 @@
 void safeZeroTurn(float desired_angle) {
   float current_angle = 0;
   static float delta_angle = 0;
-	if(DEBUG) printf("\t\t%f input call - initial condition %f\n", desired_angle, delta_angle);
-  delta_angle += desired_angle;
-  while(abs(current_angle) < abs(desired_angle)) {
-	 if(DEBUG) printf("loop - current_angle %f, %f\n", current_angle, delta_angle);
-    int start_distance[2];
-    int end_distance[2]; 
-    drive_getTicks(start_distance, start_distance+1);
+  if(DEBUG) printf("\t\t%f input call - initial condition %f\n", desired_angle, delta_angle);
 	
+  delta_angle += desired_angle;
+	
+  while(abs(current_angle) < abs(desired_angle)) {
+    int start_distance[2];
+    int end_distance[2];   
+    if(DEBUG) printf("loop - current_angle %f, %f\n", current_angle, delta_angle);
+	  
+    //Calculate the Angle to move.
     float result = (((delta_angle/360)*PI*2)*(105.8/2))/3.25;
-    
-	drive_goto((int)result, (-1) * (int)result);
+	  
+    //Attempt to change the angle
+    drive_getTicks(start_distance, start_distance+1);
+    drive_goto((int)result, (-1) * (int)result);
     drive_getTicks(end_distance, end_distance+1);
-	float avg_dif = (abs(end_distance[0]-start_distance[0])+abs(end_distance[1]-start_distance[1]))/2;
+	  
+    //Calculate the actual angle moved.  
+    float avg_dif = (abs(end_distance[0]-start_distance[0])+abs(end_distance[1]-start_distance[1]))/2;
     float angle_dif = avg_dif * (3.25*360)/(52.9*2*PI);
-	if((end_distance[0]-start_distance[0]) < 0) angle_dif *= -1;
-	current_angle += angle_dif;
-	delta_angle = desired_angle - current_angle;
-	if(DEBUG) printf("%f moved\n", delta_angle);
+    
+    //Account for negative turns - required due to the use of abs above.
+    if((end_distance[0]-start_distance[0]) < 0) angle_dif *= -1;
+
+    //Update the current angle.
+    current_angle += angle_dif;
+    delta_angle = desired_angle - current_angle;
+    
+    if(DEBUG) printf("%f moved\n", delta_angle);
     if(abs(delta_angle) < 3) break; 
   }
   return;
@@ -35,32 +46,37 @@ return mm/3.25;
 
 void safeDrawLine(float desired_dist) {
    float current_dist = 0;
+   static float delta_dist = 0;
 
-   static float delta_dist = 0; 
    delta_dist += desired_dist;
 	
-	while(abs(current_dist) < abs(desired_dist)) {
-	if(DEBUG) printf("%f Dist left\n", delta_dist);
+   while(abs(current_dist) < abs(desired_dist)) {
+    if(DEBUG) printf("%f Dist left\n", delta_dist);
     int start_distance[2];
-
     int end_distance[2]; 
-
+	   
+    //Calculate the distance to move.
     int tick_to_move = mmToTicks(delta_dist);
 
+    //Attempt to move the distance.
     drive_getTicks(start_distance, start_distance+1);
-
     drive_goto(tick_to_move, tick_to_move);
-
     drive_getTicks(end_distance, end_distance+1);
 
+    //Calcuate the distance moved.
     float avg_dif = (abs(end_distance[0]-start_distance[0])+abs(end_distance[1]-start_distance[1]))/2;
-	if((end_distance[0]-start_distance[0]) < 0) avg_dif *= -1;
+    
+    //Account for negative movement - required due to use of abs above.
+    if((end_distance[0]-start_distance[0]) < 0) avg_dif *= -1;
+    
+    //Update current dist and delta_dist.
     current_dist += avg_dif*3.25;
+    delta_dist = desired_dist - current_dist;
 
-	delta_dist = desired_dist - current_dist;
-		if(abs(delta_dist) < 4) break;
-	}
-	if(DEBUG) printf("Line Drawn\n");
+    if(abs(delta_dist) < 4) break;
+   }
+  
+  if(DEBUG) printf("Line Drawn\n");
 }
 
 
@@ -976,22 +992,9 @@ void drawString(char *string) {
 
 
 int main() {
-	//print("Drawing\n");
-	drawA();
-	//print("A\n");
-	drawL();
-	//print("L\n");
-	drawI();
-	//print("I\n");
-	drawK();
-	//print("K\n");
-	drawE();
-	//print("E\n");
-	print("E\n");
+	char string[10];
+	printf("Enter a string s to be drawn:\n");
+	scanf("%s", string);
+	drawString(string);
 	return 0;
-
-	
-
-	
-
 }
