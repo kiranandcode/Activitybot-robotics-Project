@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<form xmlns="http://www.intellij.com/uidesigner/form/" version="1" bind-to-class="ExecutionDialog">
+  <grid id="27dc6" layout-manager="GridBagLayout">
+    <constraints>
+      <xy x="20" y="20" width="327" height="239"/>
+    </constraints>
+    <properties/>
+    <border type="line" title="Kiran Gopinathan's Map Builder" title-justification="2">
+      <color color="-16777216"/>
+    </border>
+    <children>
+      <hspacer id="5595b">
+        <constraints>
+          <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="1" hsize-policy="6" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
+          <gridbag weightx="100.0" weighty="0.0"/>
+        </constraints>
+      </hspacer>
+      <vspacer id="6fdfe">
+        <constraints>
+          <grid row="4" column="0" row-span="1" col-span="1" vsize-policy="6" hsize-policy="1" anchor="0" fill="0" indent="0" use-parent-layout="false"/>
+          <gridbag weightx="-1000.0" weighty="10000.0"/>
+        </constraints>
+      </vspacer>
+      <component id="2df1b" class="javax.swing.JButton" binding="doneSaveFileButton" default-binding="true">
+        <constraints>
+          <grid row="4" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
+          <gridbag weightx="0.0" weighty="0.0"/>
+        </constraints>
+        <properties>
+          <text value="Done(Save File)"/>
+        </properties>
+      </component>
+      <component id="ed7c8" class="javax.swing.JRadioButton" binding="drawLinesRadioButton" default-binding="true">
+        <constraints>
+          <grid row="3" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+          <gridbag weightx="0.0" weighty="0.0"/>
+        </constraints>
+        <properties>
+          <selected value="true"/>
+          <text value="Draw Lines"/>
+        </properties>
+      </component>
+      <component id="daa58" class="javax.swing.JRadioButton" binding="placeRobotRadioButton" default-binding="true">
+        <constraints>
+          <grid row="2" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+          <gridbag weightx="0.0" weighty="0.0"/>
+        </constraints>
+        <properties>
+          <selected value="false"/>
+          <text value="Place Robot"/>
+        </properties>
+      </component>
+      <component id="5bac" class="javax.swing.JLabel">
+        <constraints>
+          <grid row="1" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="0" fill="0" indent="0" use-parent-layout="false"/>
+          <gridbag weightx="0.0" weighty="0.0"/>
+        </constraints>
+        <properties>
+          <text value="Options Dialog"/>
+        </properties>
+      </component>
+    </children>
+  </grid>
+</form>
