@@ -7,13 +7,20 @@
 #include "abdrive.h"
 #include "simpletext.h"
 #include "cog.h"
+#define  SENSITIVITY 100.0
+
+typedef struct motion {
+    clock_t time_taken;
+    int left_wheel_speed;
+    int right_wheel_speed;
+    struct motion *prevMotion;
+} motion_value, *Motion;
 
 float TICKS_P_MM = 3.25;
 float RADIUS = 52.9;
 
 int DO = 22, CLK = 23, DI = 24, CS = 25;
 double angle_turned, distance_moved;
-#define  SENSITIVITY 100.0
 volatile int irLeft;
 volatile int irRight;
 volatile int sensor_reading_completed = 0;
@@ -28,14 +35,7 @@ clock_t lastTime = 0;
 double timeInterval = 1000;
 int pid_initialized = 0;
 int pid_activated = 0;
-int controlDirection = 0;
-// Records a motion of the robot.
-typedef struct motion {
-    clock_t time_taken;
-    int left_wheel_speed;
-    int right_wheel_speed;
-    struct motion *prevMotion;
-} motion_value, *Motion;
+volatile int running = 1;
 
 int last_left_call, last_right_call;
 clock_t last_call_time = 0;
@@ -93,9 +93,7 @@ void outputDataToSDCard() {
 }
 
 
-void initializePID(double target, double minOutput, double maxOutput, double initial_inputValue, double Ki, double Kd, double Kp, int controlDir) {
-    controlDirection = controlDir;
-
+void initializePID(double target, double minOutput, double maxOutput, double initial_inputValue, double Ki, double Kd, double Kp) {
     targetValue = target;
     inputValue = initial_inputValue;
     old_inputValue = inputValue;
@@ -104,11 +102,39 @@ void initializePID(double target, double minOutput, double maxOutput, double ini
     ki = Ki;
     kd = Kd;
     kp = Kp;
-    pid_activated = 1;
-    pid_initialized = 1;
+    timeInterval = 1.0;
 }
 
 
+
+int max_err = 20;
+void getSensorLeftResponse() {
+    int dacVal = 0;
+    irLeft = 0;
+    for(dacVal = 0; dacVal < 160; dacVal += 8) {
+        dac_ctr(27, 0, dacVal);
+        freqout(11, 1, 38000);
+        irLeft += input(10);
+    }
+    if(irLeft > max_err) max_err = irLeft;
+    irLeft = max_err-irLeft;
+    //printf("Retrieved left_value of %d\n", irLeft);
+
+}
+
+
+void getSensorRightResponse() {
+    int dacVal = 0;
+    irRight = 0;
+    for(dacVal = 0; dacVal < 160; dacVal += 8) {
+        dac_ctr(26, 1, dacVal);
+        freqout(1, 1, 38000);
+        irRight += input(2);
+    }
+    if(irLeft > max_err) max_err = irLeft;
+    irRight = max_err - irRight;
+    //printf("Retrieved right_value of %d\n", irRight);
+}
 
 
 
@@ -116,7 +142,7 @@ int printing = 0;
 void proportionalIntegralDifferential() {
     clock_t currentTime = clock();
     double timeChange = currentTime - lastTime;
-    if (!pid_initialized || !pid_activated) return;
+
     if (timeChange >= timeInterval) {
         double errorValue = targetValue - inputValue;
 
@@ -132,8 +158,6 @@ void proportionalIntegralDifferential() {
         old_inputValue = inputValue;
         lastTime = currentTime;
         output = proportionalComponent + integralSum - kd * derivativeComponent;
-        //printf("pC, iSum, dC: %lf, %lf, %lf\n", proportionalComponent, integralSum, derivativeComponent);
-        //printf("Recorded ErrorVal: %lf, output: %lf\n", errorValue, output);
 
         if (output > max_outputValue) output = max_outputValue;
         if (output < min_outputValue) output = min_outputValue;
@@ -147,121 +171,80 @@ void proportionalIntegralDifferential() {
     }
 }
 
-void setConstants(double Ki, double Kp, double Kd) {
-    if (Kp < 0 || Ki < 0 || Kd < 0) return;
-    double timeIntervalSec = timeInterval / 1000;
-    kp = Kp;
-    ki = Ki * timeIntervalSec;
-    kd = Kd / timeIntervalSec;
-
-    if (controlDirection == 1) {
-        kp = 0 - kp;
-        ki = 0 - ki;
-        kd = 0 - kd;
-    }
-}
-
-void setControlDirection(int direction) {
-    if (direction != 0 && direction != 1) return;
-    controlDirection = direction;
-}
-
-void setTimeInterval(double newTime) {
-    if (newTime > 0) {
-        double ratio = newTime / timeInterval;
-        timeInterval = newTime;
-        ki *= ratio;
-        kd /= ratio;
-    }
-}
 
 void doMotion(Motion motion) {
-    clock_t start = clock();
-    while(clock()-start < motion->time_taken) drive_speed(motion->left_wheel_speed, motion->right_wheel_speed);
+    drive_speed(motion->right_wheel_speed, motion->left_wheel_speed);
+    clock_t start = clock(), current = clock();
+    pause(100);
+    print(" - Doing %d, %d, %d\n", motion->time_taken, motion->right_wheel_speed, motion->left_wheel_speed);
+    print("Time start: %d\n", start);
+    while(current - start < motion->time_taken) current = clock(), print("Time current: %d\n", current);
     drive_speed(0, 0);
 }
 
 void followMotions(Motion motion) {
     while(motion) {
+        print("Doing motion.");
         doMotion(motion);
         motion = motion->prevMotion;
     }
     return;
 }
 
-void setOutputLimits(double min, double max) {
-    if (min > max_outputValue) return;
-    min_outputValue = min;
-    max_outputValue = max;
 
-    if (output > max_outputValue) output = max_outputValue;
-    if (output < min_outputValue) output = min_outputValue;
-
-    if (integralSum > max_outputValue) integralSum = max_outputValue;
-    if (integralSum < min_outputValue) integralSum = min_outputValue;
-}
-
-void internalReInitialize() {
-    old_inputValue = inputValue;
-    integralSum = output;
-    if (integralSum > max_outputValue) integralSum = max_outputValue;
-    if (integralSum < min_outputValue) integralSum = min_outputValue;
-}
-
-void activate() {
-    if (pid_activated) pid_activated = 0;
-    else pid_activated = 1;
-}
 void runPID() {
 
-    while (1) {
+    //while (1) {
         getSensorLeftResponse();
         getSensorRightResponse();
-        if (!irLeft && irRight) leftCurrentValue += 1.5;
+        /*if (!irLeft && irRight) leftCurrentValue += 1.5;
         else leftCurrentValue -= SENSITIVITY/10.0;
         if (!irRight && irLeft) rightCurrentValue += 1.5;
-        else rightCurrentValue -= SENSITIVITY/10.0;
+        else rightCurrentValue -= SENSITIVITY/10.0;*/
 
-        if(leftCurrentValue > SENSITIVITY) leftCurrentValue = SENSITIVITY;
-        if(rightCurrentValue > SENSITIVITY) rightCurrentValue = SENSITIVITY;
+        leftCurrentValue = irLeft;
+        rightCurrentValue = irRight;
 
-        if(leftCurrentValue < 0) leftCurrentValue = 0;
-        if(rightCurrentValue < 0) rightCurrentValue = 0;
+        //if(leftCurrentValue > SENSITIVITY) leftCurrentValue = SENSITIVITY;
+        //if(rightCurrentValue > SENSITIVITY) rightCurrentValue = SENSITIVITY;
 
-        inputValue =(double) 2*(rightCurrentValue-leftCurrentValue)/SENSITIVITY;
+        //if(leftCurrentValue < 0) leftCurrentValue = 0;
+        //if(rightCurrentValue < 0) rightCurrentValue = 0;
+
+        inputValue =(double) (rightCurrentValue-leftCurrentValue);
         //printf("Left,right: (%d, %d)\nPIDINPUT:%lf\n", leftCurrentValue, rightCurrentValue, inputValue);
         proportionalIntegralDifferential();
         //printf("PIDOUTPUT:%lf\n", output);
-    }
+    //}
 }
 
-
+void checkDistance() {
+    while(1) {
+        if (ping_cm(8) < 7 && running == 1) {running = 0;}
+        if(!running)  drive_speed(0, 0);
+    }
+}
 
 void wallFollow() {
-    initializePID(0, -30.0, 30.0, 0.0, 0.0, 0.0, 7.5, 0);
-    setTimeInterval(1);
+    initializePID(0, -30.0, 30.0, 0.0, 0.01, 2.1, 0.8);
     //initializePID(0, 0, 100, 50, 10, 10, 10, 0);
-    int *PID_COG_ID = cog_run(runPID, 128);
+    //int *PID_COG_ID = cog_run(runPID, 128);
     last_call_time = clock();
-    while (ping_cm(8) > 8) {
-        //runPID();
+    cog_run(checkDistance, 128);
+    while (running) {
+        runPID();
         setRobotSpeed((int)output);
     }
-    cog_end(PID_COG_ID);
-    safeZeroTurn(360.0);
-    followMotions(robotMotions);
+    running = -1;
+    drive_speed(0, 0);
+    //cog_end(PID_COG_ID);
+    safeZeroTurn(180.0);
+    //followMotions(robotMotions);
 }
 
-
-void clampDriveValue() {
-
-    if (driveValue > 100) driveValue = 100;
-
-    if (driveValue < 0) driveValue = 0;
-
-}
 
 void setRobotSpeed(int val) {
+    static int last_left = 0, last_right = 0;
     static int last_call_val = 0;
     if(last_call_val == val) return;
     else last_call_val = val;
@@ -292,11 +275,13 @@ void setRobotSpeed(int val) {
     Motion motion = malloc(sizeof(motion_value));
 
 
-    motion->left_wheel_speed = left;
-    motion->right_wheel_speed = right;
+    motion->left_wheel_speed = last_left;
+    motion->right_wheel_speed = last_right;
     motion->time_taken = clock() - last_call_time;
     motion->prevMotion = robotMotions;
 
+    last_left = left;
+    last_right =right;
 
     robotMotions = motion;
     last_call_time = clock();
@@ -304,56 +289,27 @@ void setRobotSpeed(int val) {
 
     drive_speed(left, right);
 }
-
-
-void getSensorLeftResponse() {
-
-    freqout(11, 1, 38000);
-    irLeft = input(10);
-    //printf("Retrieved left_value of %d\n", irLeft);
-
-}
-
-
-void getSensorRightResponse() {
-
-    freqout(1, 1, 38000);
-    irRight = input(2);
-    //printf("Retrieved right_value of %d\n", irRight);
-}
-
-
-void getSensorValues() {
-    while (1) {
-        if (!sensor_reading_completed) {
-            getSensorLeftResponse();
-            getSensorRightResponse();
-            sensor_reading_completed = 1;
-        }
-    }
-}
-
-
-void updateDrive() {
-    if (sensor_reading_completed) {
-        int old_driveValue = driveValue;
-        if (!irRight) driveValue++;
-
-        if (!irLeft) driveValue--;
-
-        clampDriveValue();
-        if (old_driveValue != driveValue) {
-            setRobotSpeed(driveValue);
-        }
-        sensor_reading_completed = 0;
-    }
+int first_left_dist;
+int first_right_dist;
+void doCalculations() {
+    double dLeft = last_left_call - first_left_dist;
+    double dRight = last_right_call - first_right_dist;
+    dLeft *= 3.25;
+    dRight *= 3.25;
+    double dWheels =  dLeft - dRight;
+    double theta = dWheels/105.8;
+    double angle = (theta/(2*PI))*360;
+    double r = (dLeft < dRight ? dLeft : dRight)/theta;
+    distance_moved = r;
+    angle_turned = angle;
 }
 
 
 int main() // Main function
 {
-    drive_getTicksCalc(&last_left_call, &last_right_call);
-
+    drive_getTicks(&last_left_call, &last_right_call);
+    first_left_dist = last_left_call;
+    first_right_dist = last_right_call;
 
     //while(1)drive_speed(20,20);
     wallFollow();
