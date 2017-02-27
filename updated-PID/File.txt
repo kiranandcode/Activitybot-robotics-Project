@@ -1,0 +1,19 @@
+Kiran
+Gopinathan
+16001959
+zcabkgo@ucl.ac.uk
+
+Profient at programming in C, Python, Java.
+Built a Database driven Java server built using Java, deployed on Tomcat server hosted on Azure:
+http://metabolic.azurewebsites.net/
+(For testing purposes, hosted on cheapest options, so initial load times are slow).
+Built an informational website using HTML/CSS:
+http://pplv.azurewebsites.net/
+GitHub Profile:
+https://github.com/Gopiandcode
+
+Project Leader and Lead Website Developer
+pH Subteam Leader and UI Developer
+Project Leader and Lead Website Developer
+Project Leader and Lead Server Developer
+24th June 2017 - 28th August 2017

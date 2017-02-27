@@ -1,0 +1,1 @@
+/usr/bin/c++.exe    -Wl,--enable-auto-import CMakeFiles/wall_follower.dir/wall_follower.c.o  -o wall_follower.exe -Wl,--out-implib,libwall_follower.dll.a -Wl,--major-image-version,0,--minor-image-version,0  ../src/libclient.a 
